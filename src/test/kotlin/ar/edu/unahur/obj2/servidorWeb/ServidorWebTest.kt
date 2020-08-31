@@ -1,6 +1,8 @@
 package ar.edu.unahur.obj2.servidorWeb
 
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.booleans.shouldBeFalse
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
 
@@ -13,23 +15,116 @@ class ServidorWebTest : DescribeSpec({
     servidor.agregarModulo(
       Modulo(listOf("jpg", "gif"), "qué linda foto", 100)
     )
+    servidor.agregarModulo(
+      Modulo(listOf("docx", "odt"), "documento a la vista", 100)
+    )
 
     it("devuelve 501 si recibe un pedido que no es HTTP") {
       val respuesta = servidor.realizarPedido("207.46.13.5", "https://pepito.com.ar/hola.txt", LocalDateTime.now())
       respuesta.codigo.shouldBe(CodigoHttp.NOT_IMPLEMENTED)
       respuesta.body.shouldBe("")
+      respuesta.tiempo.shouldBe(10)
     }
 
     it("devuelve 200 si algún módulo puede trabajar con el pedido") {
       val respuesta = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/hola.txt", LocalDateTime.now())
       respuesta.codigo.shouldBe(CodigoHttp.OK)
       respuesta.body.shouldBe("todo bien")
+      respuesta.tiempo.shouldBe(100)
     }
 
     it("devuelve 404 si ningún módulo puede trabajar con el pedido") {
       val respuesta = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.png", LocalDateTime.now())
       respuesta.codigo.shouldBe(CodigoHttp.NOT_FOUND)
       respuesta.body.shouldBe("")
+      respuesta.tiempo.shouldBe(10)
     }
+
+    it("devuelve 200 si ningún módulo puede trabajar con el pedido y es un documento") {
+      val respuesta = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/secreto.docx", LocalDateTime.now())
+      respuesta.codigo.shouldBe(CodigoHttp.OK)
+      respuesta.body.shouldBe("documento a la vista")
+      respuesta.tiempo.shouldBe(100)
+    }
+
+  // Analizadores
+
+    val analizadorDemora = AnalizadorDeDemora(demoraMinima = 50)
+    val analizadorIPs = AnalizadorDeIP()
+    analizadorIPs.agregar("201.11.0.88")
+    analizadorIPs.agregar("200.51.101.1")
+    analizadorIPs.agregar("151.21.31.2")
+
+    val respuesta1 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/secreto.docx", LocalDateTime.now())
+    val respuesta2 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.jpg", LocalDateTime.now())
+
+    it("El servidor recibe respuestas y las envia a los analizadores, como no hay ningun no pasa nada") {
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+    }
+
+    it("El servidor recibe respuestas y las envia a los analizadores: analizador de demora") {
+      val analizadorDemora2 = AnalizadorDeDemora(demoraMinima = 105)
+      // Se agrega analizador y respuestas a este
+      servidor.agregarAnalizador(analizadorDemora)
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.hayRespuestasDemoradas().shouldBeTrue()
+      // Se quita analizador
+      servidor.quitarAnalizador(analizadorDemora)
+      // Se agrega un analizador con mayor demoraMinima
+      servidor.agregarAnalizador(analizadorDemora2)
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.hayRespuestasDemoradas().shouldBeFalse()
+      // Se le pregunta al servidor, para un módulo, la cantidad de respuestas demoradas.
+      val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
+      servidor.agregarModulo(moduloPY)
+      val respuesta3 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/codigo.py", LocalDateTime.now())
+      respuesta3.codigo.shouldBe(CodigoHttp.OK)
+      respuesta3.body.shouldBe("Archivos python")
+      respuesta3.tiempo.shouldBe(120)
+      val respuesta4 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/fuente.py", LocalDateTime.now())
+      servidor.enviarALosAnalizadores(respuesta3)
+      servidor.enviarALosAnalizadores(respuesta4)
+      servidor.cantidadDemorasEnElModulo(moduloPY).shouldBe(2)
+    }
+
+    it("El servidor recibe respuestas y las envia a los analizadores: IPs sospechosa ") {
+      val analizadorIPs1 = AnalizadorDeIP()
+      analizadorIPs1.agregar("201.11.0.88")
+      analizadorIPs1.agregar("200.51.101.1")
+      analizadorIPs1.agregar("151.21.31.2")
+      //val respuesta1 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/secreto.docx", LocalDateTime.now())
+      //val respuesta2 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.jpg", LocalDateTime.now())
+      val respuesta3 = servidor.realizarPedido("200.51.101.1", "http://pepito.com.ar/secreto.docx", LocalDateTime.now())
+      val respuesta4 = servidor.realizarPedido("200.51.101.1", "http://pepito.com.ar/Password.txt", LocalDateTime.now())
+      val respuesta5 = servidor.realizarPedido("201.11.0.88", "http://pepito.com.ar/pirata.docx", LocalDateTime.now())
+
+      servidor.agregarAnalizador(analizadorIPs1)
+      servidor.agregarAnalizador(analizadorDemora)
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.enviarALosAnalizadores(respuesta3)
+      servidor.enviarALosAnalizadores(respuesta4)
+      servidor.enviarALosAnalizadores(respuesta5)
+
+      // cuántos pedidos realizó una cierta IP sospechosa
+      servidor.cantidadPedidosSospechosos("200.51.101.1").shouldBe(2)
+
+      // cuál es el módulo más consultado por todas las IPs sospechosas
+      val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
+      servidor.agregarModulo(moduloPY)
+      val respuesta6 = servidor.realizarPedido("201.11.0.88", "http://pepito.com.ar/coyigo.py", LocalDateTime.now())
+      val respuesta7 = servidor.realizarPedido("201.11.0.88", "http://pepito.com.ar/cuiyigo.py", LocalDateTime.now())
+      val respuesta8 = servidor.realizarPedido("201.11.0.88", "http://pepito.com.ar/propertys.py", LocalDateTime.now())
+      servidor.enviarALosAnalizadores(respuesta6)
+      servidor.enviarALosAnalizadores(respuesta7)
+      servidor.enviarALosAnalizadores(respuesta8)
+      //servidor.moduloMasConsultadoPorSospechos().shouldBe(moduloPY)
+
+    }
+
+
   }
 })
