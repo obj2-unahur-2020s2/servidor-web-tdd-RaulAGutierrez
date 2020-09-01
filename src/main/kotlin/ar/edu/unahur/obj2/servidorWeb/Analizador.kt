@@ -1,5 +1,7 @@
 package ar.edu.unahur.obj2.servidorWeb
 
+import kotlin.reflect.jvm.internal.impl.renderer.KeywordStringsGenerated
+
 abstract class Analizador {
     val respuestas = mutableListOf<Respuesta>()
 
@@ -7,12 +9,15 @@ abstract class Analizador {
         respuestas.add(respuesta)
     }
 
+    open fun hayDemora(): Boolean { return false }
 
-    abstract fun hayDemora(): Boolean
-
-    abstract fun cantidadDeDemoras(modulo: Modulo): Int
+    open fun cantidadDeDemoras(modulo: Modulo): Int { return 0 }
 
     open fun pedidosSospechosos(ipSospechosa: String): Int {return 0}
+
+    open fun cuantasVecesConsultaronLasIpSospechosas(servidor: ServidorWeb): Modulo? { return null }
+
+    open fun ipSospechosasEnLaRuta(url: String): Set<String?>  { return setOf("") }
 }
 
 class AnalizadorDeDemora(val demoraMinima: Int) : Analizador() {
@@ -37,19 +42,22 @@ class AnalizadorDeIP() : Analizador() {
 
     override fun registrar(respuesta: Respuesta) {
         if (this.ipSopechosas.contains(respuesta.pedido?.ip)) {
+            respuesta.pedido?.modulo?.sumarUnaConsultaSospechosa()
             respuestas.add(respuesta)
         }
     }
-
-    override fun hayDemora(): Boolean { return false }
-
-    override fun cantidadDeDemoras(modulo: Modulo): Int { return 0 }
 
     override fun pedidosSospechosos(ipSospechosa: String) = respuestas.sumBy { this.contarSiVieneDeUnaIPSospechosa(it,ipSospechosa) }
 
     fun contarSiVieneDeUnaIPSospechosa(respuesta: Respuesta,ipSospechosa:String) = if (respuesta.pedido?.ip == ipSospechosa) 1 else 0
 
-    fun moduloMasConsultado(): Map<Modulo?, Int> {
-        return respuestas.filter{ ipSopechosas.contains(it.pedido?.ip) }.groupingBy{ it.pedido?.modulo }.eachCount()
+    override fun cuantasVecesConsultaronLasIpSospechosas(servidor: ServidorWeb): Modulo? {
+        return servidor.modulos.maxBy{ it.cuantasVecesConsultaronLasIpSospechosas() }
     }
+
+    override fun ipSospechosasEnLaRuta(url: String) =
+            respuestas.map(){ this.ipSospechosaEnUrl(it,url) }.filter(){ it != "Nada" }.toSet()
+
+    fun ipSospechosaEnUrl(respuesta:Respuesta,url: String) =
+        if (respuesta.pedido?.url.toString().startsWith(url)) respuesta.pedido?.ip.toString() else "Nada"
 }

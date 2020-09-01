@@ -47,7 +47,7 @@ class ServidorWebTest : DescribeSpec({
       respuesta.tiempo.shouldBe(100)
     }
 
-  // Analizadores
+    // Analizadores
 
     val analizadorDemora = AnalizadorDeDemora(demoraMinima = 50)
     val analizadorIPs = AnalizadorDeIP()
@@ -121,7 +121,80 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta6)
       servidor.enviarALosAnalizadores(respuesta7)
       servidor.enviarALosAnalizadores(respuesta8)
-      //servidor.moduloMasConsultadoPorSospechos().shouldBe(moduloPY)
+      servidor.moduloMasConsultadoPorSospechos().shouldBe(moduloPY)
+    }
+
+    it("El servidor recibe respuestas y las envia a los analizadores: IPs sospechosa version2") {
+      val analizadorIPs1 = AnalizadorDeIP()
+      analizadorIPs1.agregar("201.11.0.88")
+      analizadorIPs1.agregar("200.51.101.1")
+      analizadorIPs1.agregar("151.21.31.2")
+      //val respuesta1 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/secreto.docx", LocalDateTime.now())
+      //val respuesta2 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.jpg", LocalDateTime.now())
+      val respuesta3 = servidor.realizarPedido("200.51.101.1", "http://pepito.com.ar/secreto.docx", LocalDateTime.now())
+      val respuesta4 = servidor.realizarPedido("200.51.101.1", "http://pepito.com.ar/Password.txt", LocalDateTime.now())
+      val respuesta5 = servidor.realizarPedido("201.11.0.88", "http://pepito.com.ar/pirata.docx", LocalDateTime.now())
+
+      servidor.agregarAnalizador(analizadorIPs1)
+      servidor.agregarAnalizador(analizadorDemora)
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.enviarALosAnalizadores(respuesta3)
+      servidor.enviarALosAnalizadores(respuesta4)
+      servidor.enviarALosAnalizadores(respuesta5)
+
+      // cuántos pedidos realizó una cierta IP sospechosa
+      servidor.cantidadPedidosSospechosos("200.51.101.1").shouldBe(2)
+
+      // cuál es el módulo más consultado por todas las IPs sospechosas
+      val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
+      servidor.agregarModulo(moduloPY)
+      val respuesta6 = servidor.realizarPedido("201.11.0.88", "http://pepito.com.ar/coyigo.py", LocalDateTime.now())
+      val respuesta7 = servidor.realizarPedido("201.11.0.88", "http://pepito.com.ar/cuiyigo.py", LocalDateTime.now())
+      val respuesta8 = servidor.realizarPedido("201.11.0.88", "http://pepito.com.ar/propertys.py", LocalDateTime.now())
+      servidor.enviarALosAnalizadores(respuesta6)
+      servidor.enviarALosAnalizadores(respuesta7)
+      servidor.enviarALosAnalizadores(respuesta8)
+      servidor.moduloMasConsultadoPorSospechos().shouldBe(moduloPY)
+
+      // cuál es el módulo más consultado por todas las IPs sospechosas: se agrega otro modulo, con mas consultas sospechosas
+      val moduloASP = Modulo(listOf("asp", "html"), "Archivos web", 120)
+      servidor.agregarModulo(moduloASP)
+      val respuesta9 = servidor.realizarPedido("151.21.31.2", "http://pepito.com.ar/coyigo.asp", LocalDateTime.now())
+      val respuesta10 = servidor.realizarPedido("151.21.31.2", "http://pepito.com.ar/cuiyigo.asp", LocalDateTime.now())
+      val respuesta11 =
+        servidor.realizarPedido("151.21.31.2", "http://pepito.com.ar/propertys.asp", LocalDateTime.now())
+      val respuesta12 =
+        servidor.realizarPedido("151.21.31.2", "http://pepito.com.ar/propertys.asp", LocalDateTime.now())
+      servidor.enviarALosAnalizadores(respuesta9)
+      servidor.enviarALosAnalizadores(respuesta10)
+      servidor.enviarALosAnalizadores(respuesta11)
+      servidor.enviarALosAnalizadores(respuesta12)
+      servidor.moduloMasConsultadoPorSospechos().shouldBe(moduloASP)
+    }
+
+    it("El servidor recibe respuestas y las envia a los analizadores: IPs sospechosa version3") {
+      val analizadorIPs1 = AnalizadorDeIP()
+      analizadorIPs1.agregar("201.11.0.88")
+      analizadorIPs1.agregar("200.51.101.1")
+      analizadorIPs1.agregar("151.21.31.2")
+      //val respuesta1 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/secreto.docx", LocalDateTime.now())
+      //val respuesta2 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.jpg", LocalDateTime.now())
+      val respuesta3 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/secreto.docx", LocalDateTime.now())
+      val respuesta4 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/Password.docx", LocalDateTime.now())
+      val respuesta5 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.docx", LocalDateTime.now())
+
+      servidor.agregarAnalizador(analizadorIPs1)
+      servidor.agregarAnalizador(analizadorDemora)
+
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.enviarALosAnalizadores(respuesta3)
+      servidor.enviarALosAnalizadores(respuesta4)
+      servidor.enviarALosAnalizadores(respuesta5)
+
+      // conjunto de IPs sospechosas que requirieron una cierta ruta.
+      servidor.conjuntoIpSospechosasEnLaRuta("http://youporn.com/").shouldBe(setOf("200.51.101.1","201.11.0.88"))
 
     }
 

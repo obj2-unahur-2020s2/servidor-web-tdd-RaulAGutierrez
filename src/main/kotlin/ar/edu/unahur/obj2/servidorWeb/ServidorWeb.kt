@@ -46,17 +46,19 @@ class ServidorWeb {
     }
   }
 
-  //fun buscarModuloConTiempoRespuesta(tiempo: Int) = this.modulos.find{ it.tiempoRespuesta == tiempo}
-
   fun hayRespuestasDemoradas() = this.analizadores.any{ it.hayDemora() }
 
   fun cantidadDemorasEnElModulo(modulo: Modulo) = this.analizadores.sumBy{ it.cantidadDeDemoras(modulo) }
 
   fun cantidadPedidosSospechosos(ipSospechosa: String) = this.analizadores.sumBy{ it.pedidosSospechosos(ipSospechosa) }
 
-  //fun moduloMasConsultadoPorSospechos(): Modulo? {
-  //  return analizadores.filter{ if.moduloMasConsultado()}.
-  //}
+  fun moduloMasConsultadoPorSospechos(): Modulo? {
+    return analizadores.map(){ it.cuantasVecesConsultaronLasIpSospechosas(this) }.toSet().first()
+  }
+
+  fun conjuntoIpSospechosasEnLaRuta(url:String) = analizadores.map(){ it.ipSospechosasEnLaRuta(url).filter{it != ""} }.flatMap{it}.toSet()
+
+
 }
 
 class Respuesta(val codigo: CodigoHttp, val body: String, val tiempo: Int,val pedido: Pedido?)
