@@ -51,6 +51,7 @@ class ServidorWebTest : DescribeSpec({
 
     val analizadorDemora = AnalizadorDeDemora(demoraMinima = 50)
     val analizadorIPs = AnalizadorDeIP()
+    val analizadorEstadisticas = AnalizadorEstadistica()
     analizadorIPs.agregar("201.11.0.88")
     analizadorIPs.agregar("200.51.101.1")
     analizadorIPs.agregar("151.21.31.2")
@@ -63,6 +64,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta2)
     }
 
+    // Analizador de Demora
     it("El servidor recibe respuestas y las envia a los analizadores: analizador de demora") {
       val analizadorDemora2 = AnalizadorDeDemora(demoraMinima = 105)
       // Se agrega analizador y respuestas a este
@@ -89,6 +91,9 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta4)
       servidor.cantidadDemorasEnElModulo(moduloPY).shouldBe(2)
     }
+
+    // Analizador IPs Sospechosas
+
 
     it("El servidor recibe respuestas y las envia a los analizadores: IPs sospechosa ") {
       val analizadorIPs1 = AnalizadorDeIP()
@@ -195,9 +200,178 @@ class ServidorWebTest : DescribeSpec({
 
       // conjunto de IPs sospechosas que requirieron una cierta ruta.
       servidor.conjuntoIpSospechosasEnLaRuta("http://youporn.com/").shouldBe(setOf("200.51.101.1","201.11.0.88"))
-
     }
 
+    // Analizador estadisticas
+
+    it("Tiempo de respuesta promedio: Analizador de estadisticas") {
+      // modulos que ya estan cargados:
+      // Modulo(listOf("txt"), "todo bien", 100)
+      // Modulo(listOf("jpg", "gif"), "qué linda foto", 100)
+      // Modulo(listOf("docx", "odt"), "documento a la vista", 100)
+      // definiendo modulos adicionales
+      val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
+      servidor.agregarModulo(moduloPY)
+      val moduloASP = Modulo(listOf("asp", "html"), "Archivos web", 120)
+      servidor.agregarModulo(moduloASP)
+      // agregando analizador de estadistica
+      servidor.agregarAnalizador(analizadorEstadisticas)
+      // enviando mensajes a los analizadores
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      // promedio de tiempos de respuesta
+      servidor.tiempoRespuestaPromedio().shouldBe(108)
+
+      // agregando otro modulo y otros analizadores, incluyendo otro analizador de estadistica.
+      val moduloPRG = Modulo(listOf("prg"), "Archivos prg", 120)
+      servidor.agregarModulo(moduloPRG)
+      servidor.agregarAnalizador(analizadorDemora)
+      servidor.agregarAnalizador(analizadorIPs)
+      val analizadorEstadisticas2 = AnalizadorEstadistica()
+      servidor.agregarAnalizador(analizadorEstadisticas2)
+      servidor.tiempoRespuestaPromedio().shouldBe(110)
+    }
+
+    it("cantidad de pedidos entre dos momentos (fecha/hora): Analizador de estadisticas") {
+      // modulos que ya estan cargados:
+      // Modulo(listOf("txt"), "todo bien", 100)
+      // Modulo(listOf("jpg", "gif"), "qué linda foto", 100)
+      // Modulo(listOf("docx", "odt"), "documento a la vista", 100)
+      // definiendo modulos adicionales
+      val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
+      servidor.agregarModulo(moduloPY)
+      val moduloASP = Modulo(listOf("asp", "html"), "Archivos web", 120)
+      servidor.agregarModulo(moduloASP)
+      // agregando analizador de estadistica
+      servidor.agregarAnalizador(analizadorEstadisticas)
+      // enviando mensajes a los analizadores
+      val respuesta3 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/secreto.docx", LocalDateTime.parse("2020-08-30T09:55:00"))
+      val respuesta4 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/Password.docx", LocalDateTime.parse("2020-08-31T09:00:00"))
+      val respuesta5 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.docx", LocalDateTime.parse("2020-08-31T10:00:00"))
+      val respuesta6 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.docx", LocalDateTime.parse("2020-09-01T10:00:00"))
+      val respuesta7 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.docx", LocalDateTime.parse("2020-09-02T10:00:00"))
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.enviarALosAnalizadores(respuesta3)
+      servidor.enviarALosAnalizadores(respuesta4)
+      servidor.enviarALosAnalizadores(respuesta5)
+      servidor.enviarALosAnalizadores(respuesta6)
+      servidor.enviarALosAnalizadores(respuesta7)
+      // cantidad de pedidos entre dos momentos (fecha/hora)
+      servidor.cantidadPedidosEntre(LocalDateTime.parse("2020-08-31T01:00:00"),LocalDateTime.parse("2020-09-01T23:00:00")).shouldBe(3)
+    }
+
+    it(" cantidad de respuestas cuyo body incluye un determinado String: Analizador de estadisticas") {
+      // modulos que ya estan cargados:
+      // Modulo(listOf("txt"), "todo bien", 100)
+      // Modulo(listOf("jpg", "gif"), "qué linda foto", 100)
+      // Modulo(listOf("docx", "odt"), "documento a la vista", 100)
+      // definiendo modulos adicionales
+      val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
+      servidor.agregarModulo(moduloPY)
+      val moduloASP = Modulo(listOf("asp", "html"), "Archivos web", 120)
+      servidor.agregarModulo(moduloASP)
+      // agregando analizador de estadistica
+      servidor.agregarAnalizador(analizadorEstadisticas)
+      // enviando mensajes a los analizadores
+      val respuesta3 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/secreto.docx", LocalDateTime.parse("2020-08-30T09:55:00"))
+      val respuesta4 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/Password.py", LocalDateTime.parse("2020-08-31T09:00:00"))
+      val respuesta5 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.py", LocalDateTime.parse("2020-08-31T10:00:00"))
+      val respuesta6 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.docx", LocalDateTime.parse("2020-09-01T10:00:00"))
+      val respuesta7 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.py", LocalDateTime.parse("2020-09-02T10:00:00"))
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.enviarALosAnalizadores(respuesta3)
+      servidor.enviarALosAnalizadores(respuesta4)
+      servidor.enviarALosAnalizadores(respuesta5)
+      servidor.enviarALosAnalizadores(respuesta6)
+      servidor.enviarALosAnalizadores(respuesta7)
+      // cantidad de respuestas cuyo body incluye un determinado String: "Archivos python"
+      servidor.cantidadRespuestaConElBody("Archivos python").shouldBe(3)
+      // cantidad de respuestas cuyo body incluye un determinado String: "python"
+      servidor.cantidadRespuestaConElBody("python").shouldBe(3)
+    }
+
+    it("porcentaje de pedidos con respuesta exitosa: Analizador de estadisticas") {
+      // modulos que ya estan cargados:
+      // Modulo(listOf("txt"), "todo bien", 100)
+      // Modulo(listOf("jpg", "gif"), "qué linda foto", 100)
+      // Modulo(listOf("docx", "odt"), "documento a la vista", 100)
+      // definiendo modulos adicionales
+      val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
+      servidor.agregarModulo(moduloPY)
+      val moduloASP = Modulo(listOf("asp", "html"), "Archivos web", 120)
+      servidor.agregarModulo(moduloASP)
+      // agregando analizador de estadistica
+      servidor.agregarAnalizador(analizadorEstadisticas)
+      // enviando mensajes a los analizadores
+      val respuesta3 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/secreto.docx", LocalDateTime.parse("2020-08-30T09:55:00"))
+      val respuesta4 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/Password.py", LocalDateTime.parse("2020-08-31T09:00:00"))
+      val respuesta5 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.py", LocalDateTime.parse("2020-08-31T10:00:00"))
+      val respuesta6 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.docx", LocalDateTime.parse("2020-09-01T10:00:00"))
+      val respuesta7 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.py", LocalDateTime.parse("2020-09-02T10:00:00"))
+      val respuesta8 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.exe", LocalDateTime.now())
+      respuesta8.codigo.shouldBe(CodigoHttp.NOT_FOUND)
+      respuesta8.body.shouldBe("")
+      respuesta8.tiempo.shouldBe(10)
+      val respuesta9 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.exe", LocalDateTime.now())
+      val respuesta10 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.exe", LocalDateTime.now())
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.enviarALosAnalizadores(respuesta3)
+      servidor.enviarALosAnalizadores(respuesta4)
+      servidor.enviarALosAnalizadores(respuesta5)
+      servidor.enviarALosAnalizadores(respuesta6)
+      servidor.enviarALosAnalizadores(respuesta7)
+      servidor.enviarALosAnalizadores(respuesta8)
+      servidor.enviarALosAnalizadores(respuesta9)
+      servidor.enviarALosAnalizadores(respuesta10)
+      // porcentaje de pedidos con respuesta exitosa
+      servidor.porcentajePedidosExistosos().shouldBe(70)
+    }
+
+    it("porcentaje de pedidos con respuesta exitosa, con varios analizadores: Analizador de estadisticas") {
+      // modulos que ya estan cargados:
+      // Modulo(listOf("txt"), "todo bien", 100)
+      // Modulo(listOf("jpg", "gif"), "qué linda foto", 100)
+      // Modulo(listOf("docx", "odt"), "documento a la vista", 100)
+      // definiendo modulos adicionales
+      val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
+      servidor.agregarModulo(moduloPY)
+      val moduloASP = Modulo(listOf("asp", "html"), "Archivos web", 120)
+      servidor.agregarModulo(moduloASP)
+      // agregando analizador de estadistica
+      servidor.agregarAnalizador(analizadorEstadisticas)
+      // agregando varios analizadores
+      servidor.agregarAnalizador(analizadorDemora)
+      servidor.agregarAnalizador(analizadorIPs)
+      val analizadorEstadisticas2 = AnalizadorEstadistica()
+      servidor.agregarAnalizador(analizadorEstadisticas2)
+      // enviando mensajes a los analizadores
+      val respuesta3 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/secreto.docx", LocalDateTime.parse("2020-08-30T09:55:00"))
+      val respuesta4 = servidor.realizarPedido("200.51.101.1", "http://youporn.com/Password.py", LocalDateTime.parse("2020-08-31T09:00:00"))
+      val respuesta5 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.py", LocalDateTime.parse("2020-08-31T10:00:00"))
+      val respuesta6 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.docx", LocalDateTime.parse("2020-09-01T10:00:00"))
+      val respuesta7 = servidor.realizarPedido("201.11.0.88", "http://youporn.com/pirata.py", LocalDateTime.parse("2020-09-02T10:00:00"))
+      val respuesta8 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.exe", LocalDateTime.now())
+      respuesta8.codigo.shouldBe(CodigoHttp.NOT_FOUND)
+      respuesta8.body.shouldBe("")
+      respuesta8.tiempo.shouldBe(10)
+      val respuesta9 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.exe", LocalDateTime.now())
+      val respuesta10 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/playa.exe", LocalDateTime.now())
+      servidor.enviarALosAnalizadores(respuesta1)
+      servidor.enviarALosAnalizadores(respuesta2)
+      servidor.enviarALosAnalizadores(respuesta3)
+      servidor.enviarALosAnalizadores(respuesta4)
+      servidor.enviarALosAnalizadores(respuesta5)
+      servidor.enviarALosAnalizadores(respuesta6)
+      servidor.enviarALosAnalizadores(respuesta7)
+      servidor.enviarALosAnalizadores(respuesta8)
+      servidor.enviarALosAnalizadores(respuesta9)
+      servidor.enviarALosAnalizadores(respuesta10)
+      // porcentaje de pedidos con respuesta exitosa
+      servidor.porcentajePedidosExistosos().shouldBe(70)
+    }
 
   }
 })
