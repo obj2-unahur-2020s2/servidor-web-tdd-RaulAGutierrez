@@ -71,14 +71,14 @@ class ServidorWebTest : DescribeSpec({
       servidor.agregarAnalizador(analizadorDemora)
       servidor.enviarALosAnalizadores(respuesta1)
       servidor.enviarALosAnalizadores(respuesta2)
-      servidor.hayRespuestasDemoradas().shouldBeTrue()
+      analizadorDemora.hayDemora().shouldBeTrue()
       // Se quita analizador
       servidor.quitarAnalizador(analizadorDemora)
       // Se agrega un analizador con mayor demoraMinima
       servidor.agregarAnalizador(analizadorDemora2)
       servidor.enviarALosAnalizadores(respuesta1)
       servidor.enviarALosAnalizadores(respuesta2)
-      servidor.hayRespuestasDemoradas().shouldBeFalse()
+      analizadorDemora2.hayDemora().shouldBeFalse()
       // Se le pregunta al servidor, para un módulo, la cantidad de respuestas demoradas.
       val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
       servidor.agregarModulo(moduloPY)
@@ -89,7 +89,7 @@ class ServidorWebTest : DescribeSpec({
       val respuesta4 = servidor.realizarPedido("207.46.13.5", "http://pepito.com.ar/fuente.py", LocalDateTime.now())
       servidor.enviarALosAnalizadores(respuesta3)
       servidor.enviarALosAnalizadores(respuesta4)
-      servidor.cantidadDemorasEnElModulo(moduloPY).shouldBe(2)
+      analizadorDemora2.cantidadDeDemoras(moduloPY).shouldBe(2)
     }
 
     // Analizador IPs Sospechosas
@@ -115,7 +115,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta5)
 
       // cuántos pedidos realizó una cierta IP sospechosa
-      servidor.cantidadPedidosSospechosos("200.51.101.1").shouldBe(2)
+      analizadorIPs1.pedidosSospechosos("200.51.101.1").shouldBe(2)
 
       // cuál es el módulo más consultado por todas las IPs sospechosas
       val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
@@ -126,7 +126,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta6)
       servidor.enviarALosAnalizadores(respuesta7)
       servidor.enviarALosAnalizadores(respuesta8)
-      servidor.moduloMasConsultadoPorSospechos().shouldBe(moduloPY)
+      analizadorIPs1.cuantasVecesConsultaronLasIpSospechosas(servidor).shouldBe(moduloPY)
     }
 
     it("El servidor recibe respuestas y las envia a los analizadores: IPs sospechosa version2") {
@@ -149,7 +149,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta5)
 
       // cuántos pedidos realizó una cierta IP sospechosa
-      servidor.cantidadPedidosSospechosos("200.51.101.1").shouldBe(2)
+      analizadorIPs1.pedidosSospechosos("200.51.101.1").shouldBe(2)
 
       // cuál es el módulo más consultado por todas las IPs sospechosas
       val moduloPY = Modulo(listOf("py", "ipynb"), "Archivos python", 120)
@@ -160,7 +160,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta6)
       servidor.enviarALosAnalizadores(respuesta7)
       servidor.enviarALosAnalizadores(respuesta8)
-      servidor.moduloMasConsultadoPorSospechos().shouldBe(moduloPY)
+      analizadorIPs1.cuantasVecesConsultaronLasIpSospechosas(servidor).shouldBe(moduloPY)
 
       // cuál es el módulo más consultado por todas las IPs sospechosas: se agrega otro modulo, con mas consultas sospechosas
       val moduloASP = Modulo(listOf("asp", "html"), "Archivos web", 120)
@@ -175,7 +175,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta10)
       servidor.enviarALosAnalizadores(respuesta11)
       servidor.enviarALosAnalizadores(respuesta12)
-      servidor.moduloMasConsultadoPorSospechos().shouldBe(moduloASP)
+      analizadorIPs1.cuantasVecesConsultaronLasIpSospechosas(servidor).shouldBe(moduloASP)
     }
 
     it("El servidor recibe respuestas y las envia a los analizadores: IPs sospechosa version3") {
@@ -199,7 +199,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta5)
 
       // conjunto de IPs sospechosas que requirieron una cierta ruta.
-      servidor.conjuntoIpSospechosasEnLaRuta("http://youporn.com/").shouldBe(setOf("200.51.101.1","201.11.0.88"))
+      analizadorIPs1.ipSospechosasEnLaRuta("http://youporn.com/").shouldBe(setOf("200.51.101.1","201.11.0.88"))
     }
 
     // Analizador estadisticas
@@ -220,7 +220,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta1)
       servidor.enviarALosAnalizadores(respuesta2)
       // promedio de tiempos de respuesta
-      servidor.tiempoRespuestaPromedio().shouldBe(108)
+      analizadorEstadisticas.tiemposDeRespuesta(servidor)shouldBe(108)
 
       // agregando otro modulo y otros analizadores, incluyendo otro analizador de estadistica.
       val moduloPRG = Modulo(listOf("prg"), "Archivos prg", 120)
@@ -229,7 +229,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.agregarAnalizador(analizadorIPs)
       val analizadorEstadisticas2 = AnalizadorEstadistica()
       servidor.agregarAnalizador(analizadorEstadisticas2)
-      servidor.tiempoRespuestaPromedio().shouldBe(110)
+      analizadorEstadisticas2.tiemposDeRespuesta(servidor).shouldBe(110)
     }
 
     it("cantidad de pedidos entre dos momentos (fecha/hora): Analizador de estadisticas") {
@@ -258,7 +258,8 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta6)
       servidor.enviarALosAnalizadores(respuesta7)
       // cantidad de pedidos entre dos momentos (fecha/hora)
-      servidor.cantidadPedidosEntre(LocalDateTime.parse("2020-08-31T01:00:00"),LocalDateTime.parse("2020-09-01T23:00:00")).shouldBe(3)
+      //servidor.cantidadPedidosEntre(LocalDateTime.parse("2020-08-31T01:00:00"),LocalDateTime.parse("2020-09-01T23:00:00")).shouldBe(3)
+      analizadorEstadisticas.cantPedidosEntre(LocalDateTime.parse("2020-08-31T01:00:00"),LocalDateTime.parse("2020-09-01T23:00:00")).shouldBe(3)
     }
 
     it(" cantidad de respuestas cuyo body incluye un determinado String: Analizador de estadisticas") {
@@ -287,9 +288,9 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta6)
       servidor.enviarALosAnalizadores(respuesta7)
       // cantidad de respuestas cuyo body incluye un determinado String: "Archivos python"
-      servidor.cantidadRespuestaConElBody("Archivos python").shouldBe(3)
+      analizadorEstadisticas.cantRespuestasConElBody("Archivos python").shouldBe(3)
       // cantidad de respuestas cuyo body incluye un determinado String: "python"
-      servidor.cantidadRespuestaConElBody("python").shouldBe(3)
+      analizadorEstadisticas.cantRespuestasConElBody("python").shouldBe(3)
     }
 
     it("porcentaje de pedidos con respuesta exitosa: Analizador de estadisticas") {
@@ -327,7 +328,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta9)
       servidor.enviarALosAnalizadores(respuesta10)
       // porcentaje de pedidos con respuesta exitosa
-      servidor.porcentajePedidosExistosos().shouldBe(70)
+      analizadorEstadisticas.porcentajePedidosExistosos(servidor).shouldBe(70)
     }
 
     it("porcentaje de pedidos con respuesta exitosa, con varios analizadores: Analizador de estadisticas") {
@@ -370,7 +371,7 @@ class ServidorWebTest : DescribeSpec({
       servidor.enviarALosAnalizadores(respuesta9)
       servidor.enviarALosAnalizadores(respuesta10)
       // porcentaje de pedidos con respuesta exitosa
-      servidor.porcentajePedidosExistosos().shouldBe(70)
+      analizadorEstadisticas2.porcentajePedidosExistosos(servidor).shouldBe(70)
     }
 
   }

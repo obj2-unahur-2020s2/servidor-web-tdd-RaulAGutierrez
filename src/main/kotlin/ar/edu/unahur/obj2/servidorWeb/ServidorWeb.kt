@@ -48,27 +48,7 @@ class ServidorWeb {
     }
   }
 
-  fun hayRespuestasDemoradas() = this.analizadores.any{ it.hayDemora() }  // devuelve un boleeano
-
-  fun cantidadDemorasEnElModulo(modulo: Modulo) = this.analizadores.sumBy{ it.cantidadDeDemoras(modulo) } // devuelve un Int
-
-  fun cantidadPedidosSospechosos(ipSospechosa: String) = this.analizadores.sumBy{ it.pedidosSospechosos(ipSospechosa) }  // devuelve un Int
-
-  fun moduloMasConsultadoPorSospechos(): Modulo? {
-    return analizadores.map(){ it.cuantasVecesConsultaronLasIpSospechosas(this) }.toSet().first() // devuelve un tipo Modulo
-  }
-
-  fun conjuntoIpSospechosasEnLaRuta(url:String) = analizadores.map(){ it.ipSospechosasEnLaRuta(url).filter{it != ""} }.flatMap{it}.toSet() // devuelve conjunto de string
-
   fun tiemposRespuestaDeModulos() = this.modulos.sumBy{ it.tiempoRespuesta()  } // devuelve un Int
-
-  fun tiempoRespuestaPromedio() = analizadores.map{ it.tiemposDeRespuesta(this) }.filter(){ it != 0 }.first() // devuelve un Int
-
-  fun cantidadPedidosEntre(fechaInicio: LocalDateTime, fechaFin: LocalDateTime) = analizadores.sumBy{ it.cantPedidosEntre(fechaInicio,fechaFin) } // devuelve un Int
-
-  fun cantidadRespuestaConElBody(body: String) = analizadores.sumBy(){ it.cantRespuestasConElBody(body) } // devuelve un Int
-
-  fun porcentajePedidosExistosos() = (analizadores.map(){ it.cantPedidosExistosos() }.first() * 100) / totalPedidosRecibidos // devuelve un Int
 
 }
 

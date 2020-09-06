@@ -12,29 +12,29 @@ abstract class Analizador {
         }
     }
 
-    open fun hayDemora(): Boolean { return false }
+    open fun hayDemora() = false
 
-    open fun cantidadDeDemoras(modulo: Modulo): Int { return 0 }
+    open fun cantidadDeDemoras(modulo: Modulo) = 0
 
-    open fun pedidosSospechosos(ipSospechosa: String): Int {return 0}
+    open fun pedidosSospechosos(ipSospechosa: String) = 0
 
     open fun cuantasVecesConsultaronLasIpSospechosas(servidor: ServidorWeb): Modulo? { return null }
 
     open fun ipSospechosasEnLaRuta(url: String): Set<String?>  { return setOf("") }
 
-    open fun tiemposDeRespuesta(servidor: ServidorWeb): Int { return 0 }
+    open fun tiemposDeRespuesta(servidor: ServidorWeb) = 0
 
-    open fun cantPedidosEntre(fechaInicio: LocalDateTime, fechaFin: LocalDateTime): Int { return 0 }
+    open fun cantPedidosEntre(fechaInicio: LocalDateTime, fechaFin: LocalDateTime) = 0
 
-    open  fun cantRespuestasConElBody(body: String): Int { return 0 }
+    open  fun cantRespuestasConElBody(body: String) = 0
 
-    fun cantPedidosExistosos() = respuestas.size // devuelve un Int
+    open fun porcentajePedidosExistosos(servidor: ServidorWeb) = 0
 
 }
 
 class AnalizadorDeDemora(val demoraMinima: Int) : Analizador() {
 
-    override fun hayDemora() = this.respuestas.any{ it.tiempo > demoraMinima }
+    override fun hayDemora() = this.respuestas.any{ it.tiempo > demoraMinima } // devuelve un tipo booleano
 
     override fun cantidadDeDemoras(modulo: Modulo) =
         this.respuestas.filter{ this.respuestaQUeCorresponden(it,modulo) }.sumBy{ this.unaRespuestaConDemora(it) }
@@ -85,5 +85,7 @@ class AnalizadorEstadistica(): Analizador() {
 
     override fun cantRespuestasConElBody(body: String) =
             respuestas.filter() { it.body.contains(body) }.size // devuelve un Int
+
+    override fun porcentajePedidosExistosos(servidor: ServidorWeb) = (respuestas.size * 100) / servidor.totalPedidosRecibidos // devuelve un Int
 
 }
